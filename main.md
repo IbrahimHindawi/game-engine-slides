@@ -8,11 +8,14 @@ class: invert
 By: Ibrahim El Hindawi
 
 ---
+
 # Outline
 - Game Engine Architecture Overview
 - Subsystems: input, update, render, audio, time
 - C & Assembly
+
 ---
+
 # Some Code:
 ```x86asm
 .data
@@ -25,6 +28,7 @@ main endp
 ```
 ```python
 print('hell, world!')
+
 ```
 ---
 # Dragon Knight
