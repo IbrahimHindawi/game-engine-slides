@@ -18,7 +18,7 @@ Dijkstra: "Object-oriented programming is an exceptionally bad idea which could 
 # Outline
 - Game Engine Architecture Overview
 - Subsystems: input, update, render, audio, time
-- C & Assembly
+- C & Assembly Implementation Details
 
 ---
 
@@ -31,19 +31,107 @@ Dijkstra: "Object-oriented programming is an exceptionally bad idea which could 
 ---
 
 # AAA Game Engine Architecture:
-![bg left](arch.png)
-This is something  that is for gigantic AAA engines
+![bg left fit](arch.png)
+- many generic subsystems
+- huge complexity
+- many requirements
+- likely to have high compile times
+- harder to iterate
 
 ---
 
 # Game Engine Architecture:
-![bg right](arch.png)
-This is what you actually need.
+![bg right fit](miniarch.png)
+- tiny codebase
+- highly specialized
+- one target
+- super fast compile times
+- highly agile
+
+---
+
+# Core Loop
+```c
+int main() {
+    subsystems_initialize_all();
+    resource_load_all();
+    while (game_is_running) {
+        if (!should_wait()) {
+            input_read();
+            update();
+            render();
+        } else {
+            sleep();
+        }
+    }
+}
+```
+
+---
+
+# Core Loop With Framerate
+```c
+int main() {
+    subsystems_initialize_all();
+    resource_load_all();
+    while (game_is_running) {
+        if (!should_wait()) { // check target framerate
+            input_read();
+            update();
+            render();
+        } else {
+            sleep();
+        }
+    }
+}
+```
+
 
 ---
 
 # Input Subsystem
+![bg left fit](input.png)
 https://www.youtube.com/watch?v=-z8_F9ozERc
+
+---
+
+# Input
+```c
+void input_read() {
+    while (os_get_event()) {
+        switch (event) {
+            case QUIT: {
+                game_is_running = false;
+            }
+            case KEY_PRESSED: {
+                if (vkcode == ESCAPE) {
+                    running = false;
+                } else if (vkcode == 'W') {
+                    player_velocity.x += 1.f;
+                } else if (vkcode == 'S') {
+                    player_velocity.x -= 1.f;
+                } else if (vkcode == 'A') {
+                    player_velocity.y += 1.f;
+                } else if (vkcode == 'D') {
+                    player_velocity.y -= 1.f;
+                } else if (vkcode == SPACE) {
+                    shoot();
+                }
+            }
+        }
+    }
+}
+```
+
+---
+
+# Update
+
+
+
+---
+
+# Render
 
 ---
 
@@ -57,11 +145,4 @@ main proc
  ret
 main endp
 ```
-```python
-print('hell, world!')
-
-```
 ---
-# Dragon Knight
-![bg left fit](logo.png)
-Is a cool hero
