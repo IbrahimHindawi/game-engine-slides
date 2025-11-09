@@ -374,6 +374,25 @@ C is transparent and feels like Assembly, which is actually what we want to be w
 
 ---
 
+Memory Allocation Strategy:
+Arena Allocators all the way!
+
+Data Structures:
+Code Gen'd generic data structures, highly hackable, highly debuggable.
+
+---
+
+# Epilogue
+
+---
+
+# Dare to dream!
+Don't be afraid of the machine, conquer it!
+Don't hide behind 18 septillion abstractions, understand them!
+Don't rely on gigantic libraries, build them!
+
+---
+
 # Some Code:
 ```x86asm
 .data
