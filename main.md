@@ -57,8 +57,15 @@ Commercial Engines are great if you:
 ---
 
 # Forget "Engine", we just want a Game!
-For my game, I'm a DotA 2 player & I like roguelikes, so I want to make an ARPG Rogue-like.
+For my game, I'm a DotA 2 player & I like roguelikes.
+I want to make an ARPG Rogue-like.
 I don't want to build an ultra generic cosmic do-it-all engine at all!
+Requirements:
+- top down camera
+- spells & cooldowns
+- buffs/debuffs
+- randomized upgrades
+- randomized levels
 
 ---
 
@@ -87,6 +94,72 @@ I don't want to build an ultra generic cosmic do-it-all engine at all!
 ---
 
 # II - Game Engine Subsystems
+
+---
+
+# Resource Allocation
+All resources are allocated at game start.
+```c
+enum ResourceMeshSkinId {
+    resource_meshskin_g,
+    resource_meshskin_goat,
+    resource_meshskin_d,
+    resource_meshskin_count,
+};
+ModelSkin ModelSkinDataArray[resource_meshskin_count];
+```
+
+---
+
+Data Oriented Design is all about (but not restricted to) data layouts and optimal memory read/writes.
+Basically SoA vs AoS: Struct of Arrays vs Array of Structs.
+```c
+// AoS
+struct entity { vec3 pos; vec3 vel; vec3 torque; vec3 color; };
+array<T> entities;
+entities[0].pos = {};
+```
+VS
+```c
+// SoA
+struct entity_payload { array<vec3> pos; array<vec3> torque; array<vec3> color; };
+entity_payload entities;
+entities.pos[0] = {};
+```
+
+---
+
+# Archetype based Entity Component System
+
+```c
+
+struct GameState {
+    Array_vec3s positions;
+    Array_vec3s velocities;
+    Array_vec3s rotations;
+    Array_vec3s scales;
+    Array_f32 speeds;
+    Array_u32 shapes;
+};
+
+struct StaticArchetype {
+    GameState gamestate;
+    GfxState gfxstate;
+    DebugState dbgstate;
+    EntityData entity_data;
+};
+```
+
+---
+
+# Data Oriented Design
+
+Entities are just IDs, indices into arrays.
+EntityHero is just 0.
+```c
+entity_payload->dbgstate.vaos.data[EntityHero] = 
+    MeshDataArray[resource_mesh_circle].vao;
+```
 
 ---
 
@@ -119,7 +192,7 @@ int main() {
             update();
             render();
         } else {
-            sleep();
+            sleep(time_to_wait);
         }
     }
 }
@@ -239,7 +312,6 @@ f32 actionreset;
 # Action State Fragment:
 Ended up with an Action State Fragment setup:
 ```c
-typedef struct ActionStateFragment ActionStateFragment;
 struct ActionStateFragment {
     Animation animationclip;
     f32 animationcliptime;
@@ -248,7 +320,6 @@ struct ActionStateFragment {
     bool canrotate;
     DamageType damagetype;
 };
-typedef struct ActionStatePayload ActionStatePayload;
 struct ActionStatePayload {
     Array_ActionStateFragment actionstatefragments;
 };
@@ -256,25 +327,33 @@ struct ActionStatePayload {
 
 ---
 # Declarative Action State:
-This is how entities are initalized
 ```c
-dynamic_archetype->actionstate.actionstatepayloads.data[entity_index].actionstatefragments.data[ActionMain] = 
-actionstatefragmentInitialize(AnimationDataArray[resource_anim_power], false, false, DamagePierce);
+entity_payload->actionstate.actionstatepayloads.data[EntityHero].actionstatefragments.data[ActionMain] = 
+    actionstatefragmentInitialize(AnimationDataArray[resource_anim_goat_main], false, false, DamageCleave);
 
-dynamic_archetype->actionstate.actionstatepayloads.data[entity_index].actionstatefragments.data[ActionSpecial] = 
-actionstatefragmentInitialize(AnimationDataArray[resource_anim_shout], false, false, DamageNone);
+entity_payload->actionstate.actionstatepayloads.data[EntityHero].actionstatefragments.data[ActionSpecial] = 
+    actionstatefragmentInitialize(AnimationDataArray[resource_anim_goat_magic], false, false, DamageCleave);
 
-dynamic_archetype->actionstate.actionstatepayloads.data[entity_index].actionstatefragments.data[ActionDefense] = 
-actionstatefragmentInitialize(AnimationDataArray[resource_anim_shout], false, false, DamageNone);
+entity_payload->actionstate.actionstatepayloads.data[EntityHero].actionstatefragments.data[ActionDefense] =
+    actionstatefragmentInitialize(AnimationDataArray[resource_anim_goat_shout], false, false, DamageCleave);
 
-dynamic_archetype->actionstate.actionstatepayloads.data[entity_index].actionstatefragments.data[ActionDash] = 
-actionstatefragmentInitialize(AnimationDataArray[resource_anim_shout], false, false, DamageNone);
+entity_payload->actionstate.actionstatepayloads.data[EntityHero].actionstatefragments.data[ActionDash] = 
+    actionstatefragmentInitialize(AnimationDataArray[resource_anim_goat_dash], false, false, DamageNone);
+    
+entity_payload->actionstate.actionstatepayloads.data[EntityHero].actionstatefragments.data[ActionPower] = 
+    actionstatefragmentInitialize(AnimationDataArray[resource_anim_goat_power], false, false, DamageCleave);
+
+entity_payload->actionstate.actionstatepayloads.data[EntityHero].actionstatefragments.data[ActionTrait] = 
+    actionstatefragmentInitialize(AnimationDataArray[resource_anim_goat_trait], false, false, DamageRadial);
+
+entity_payload->actionstate.actionstatepayloads.data[EntityHero].actionstatefragments.data[ActionUltimate] = 
+    actionstatefragmentInitialize(AnimationDataArray[resource_anim_goat_ultimate], false, false, DamageRadial);
 ```
 ---
 
 # Declarative Action State Integration:
 ```c
-actionstateIntegrate(i, &dynamic_archetype->actionstate, ActionMain);
+actionstateIntegrate(i, &entity_payload->actionstate, ActionMain);
 ```
 
 ---
@@ -316,7 +395,7 @@ for (i32 i = 0; i < ButtonCount; ++i) {
     glUniform4f(shaderUniformGet(&memory->permanent, &ShaderDataArray[resource_shader_action], "Color"), 1.0f, 1.0f, 1.0f, 1.0f);
     glUniform1f(shaderUniformGet(&memory->permanent, &ShaderDataArray[resource_shader_action], "normalized_value"), gpubuffer_buttons_state[i] / gpubuffer_buttons_max_state[i]);
     glUniformMatrix4fv(shaderUniformGet(&memory->permanent, &ShaderDataArray[resource_shader_action], "model"), 1, GL_FALSE, &guibuttons_archetype->gui_buttons_state.models.data[i].m00);
-    // glUniformMatrix4fv(shaderUniformGet(&memory->permanent, &ShaderDataArray[resource_shader_action], "model"), 1, GL_FALSE, &dynamic_archetype->gfxskinstate.models.data[EntityHero].m00);
+    // glUniformMatrix4fv(shaderUniformGet(&memory->permanent, &ShaderDataArray[resource_shader_action], "model"), 1, GL_FALSE, &entity_payload->gfxskinstate.models.data[EntityHero].m00);
     glUniformMatrix4fv(shaderUniformGet(&memory->permanent, &ShaderDataArray[resource_shader_action], "view"), 1, GL_FALSE, &view.m00);
     glUniformMatrix4fv(shaderUniformGet(&memory->permanent, &ShaderDataArray[resource_shader_action], "proj"), 1, GL_FALSE, &proj.m00);
 
@@ -343,21 +422,60 @@ for (i32 i = 0; i < ButtonCount; ++i) {
 
 ---
 
-DOD vs OOP
-Data Oriented Design is all about (but not restricted to) data layouts and optimal memory read/writes.
-Basically SoA vs AoS: Struct of Arrays vs Array of Structs.
-```c
-// AoS
-struct entity { vec3 pos; vec3 vel; vec3 torque; vec3 color; };
-array<T> entities;
-entities[0].pos = {};
+
+# Vectorization
+CPUs have registers that are basically tiny but ultra-fast memory.
+| 64  | 32   | 16    | 8      | name            |
+|-----|------|-------|--------|-----------------|
+| rax | eax  | ax    | ah/al  | accumulator     |
+| rbx | ebx  | bx    | bh/bl  | base            |
+| rcx | ecx  | cx    | ch/cl  | counter         |
+| rdx | edx  | dx    | dh/dl  | data            |
+
+---
+
+# Vectorization
+CPUs also have wide registers that allow for parallel processing (SIMD):
+| 512 | 256  | 128  |
+|-----|------|-------
+| ZMM | YMM  | XMM  |
+
+---
+
+# Vectorization
+128 bit/16 byte
 ```
-VS
-```c
-// SoA
-struct entity_payload { array<vec3> pos; array<vec3> torque; array<vec3> color; };
-entity_payload entities;
-entities.pos[0] = {};
+f32     |f32     |f32     |f32
+x       |y       |z       |w
+00000000|00000000|00000000|00000000
+```
+
+```x86asm
+; load a[0..3] into xmm0
+movaps xmm0, [rax]      ; aligned load  (use movups if unaligned)
+
+; load b[0..3] into xmm1
+movaps xmm1, [rbx]
+
+; add element-wise (a + b)
+addps xmm0, xmm1        ; xmm0 = xmm0 + xmm1 (4 floats added in parallel)
+
+; store the result to c[0..3]
+movaps [rcx], xmm0
+```
+
+---
+
+# Cache Coherence
+
+When you load a byte, the CPU pre-fetcher will cache the next 64 bytes into the L1 cache.
+So packing things thighly in memory yields significant performance advantages and unlocks vectorization.
+```
+load byte
+v
+0000000000000-000000000000-000000000000-000000000000
++------------+------------+------------+------------
+^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~cached entire line
 ```
 
 ---
@@ -374,11 +492,87 @@ C is transparent and feels like Assembly, which is actually what we want to be w
 
 ---
 
-Memory Allocation Strategy:
-Arena Allocators all the way!
+# Memory Allocation Strategy:
+Arena Allocators all the way:
+Free-list allocators (malloc/new) spread allocations all over RAM.
+Pre-allocate 4096 bytes i.e. 1 page and use that memory to allocate objects, allocate more if needed.
+Arena Allocators are the core to build many allocators on top of, they also trivialize memory management.
+https://www.gingerbill.org/series/memory-allocation-strategies/
+https://www.rfleury.com/p/untangling-lifetimes-the-arena-allocator
+https://github.com/ibrahimhindawi/saha
 
-Data Structures:
-Code Gen'd generic data structures, highly hackable, highly debuggable.
+---
+
+# Arena Allocator
+save the base position
+```
++----+----+----+----+----+----
+^base
+```
+
+increment pointer to allocate
+```
++----+----+----+----+----+----
+^base          ^alloc
+```
+
+reset the position to free
+```
++----+----+----+----+----+----
+^base
+```
+---
+
+```c
+struct T { u32 a; u32 b; };
+
+struct array_T {
+    u64 length;
+    u64 capacity;
+    T *data;
+};
+
+int main() {
+    Arena arena = {};
+    arenaInitialize(&arena);
+    void *pos = arenaGetPos(&arena); // save position
+    array_T ts = { .length = 16 };
+    ts.data = arenaPushArrayZero(&arena, T, ts.length); // alloc
+    for(i32 i = 0; i < ts.length; i++) {
+        ts.data[i].a = i;
+        ts.data[i].b = i;
+    }
+    arenaSetPos(&arena, pos); // dealloc
+    return 0;
+}
+```
+---
+
+# Generic Data Structures:
+https://github.com/ibrahimhindawi/haikal
+Code Gen'd generic data structures, highly hackable, highly debuggable:
+- Read data structure file
+- Replace `TYPE` with your type
+- Save and compile file
+```c
+struct array_TYPE { TYPE *data; u64 length; u64 capacity };
+```
+Becomes:
+```c
+struct array_i32 { i32 *data; u64 length; u64 capacity };
+```
+Done!
+
+---
+
+# Assembly:
+https://github.com/ibrahimhindawi/masm64-init
+https://github.com/ibrahimhindawi/vulkasm
+You don't have to write everything in assembly, but being able to read assembly helps tremendously:
+- Intimate understanding of the machine.
+- Debug abilities.
+- Optimization abilities.
+- Undertand Interpreters/Compilers
 
 ---
 
@@ -390,6 +584,12 @@ Code Gen'd generic data structures, highly hackable, highly debuggable.
 Don't be afraid of the machine, conquer it!
 Don't hide behind 18 septillion abstractions, understand them!
 Don't rely on gigantic libraries, build them!
+
+---
+
+Discord: x19
+Github: github.com/ibrahimhindawi
+Linktree: linktr.ee/ibrahimhindawi
 
 ---
 
