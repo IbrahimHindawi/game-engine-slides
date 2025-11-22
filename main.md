@@ -111,57 +111,6 @@ ModelSkin ModelSkinDataArray[resource_meshskin_count];
 
 ---
 
-Data Oriented Design is all about (but not restricted to) data layouts and optimal memory read/writes.
-Basically SoA vs AoS: Struct of Arrays vs Array of Structs.
-```c
-// AoS
-struct entity { vec3 pos; vec3 vel; vec3 torque; vec3 color; };
-array<T> entities;
-entities[0].pos = {};
-```
-VS
-```c
-// SoA
-struct entity_payload { array<vec3> pos; array<vec3> torque; array<vec3> color; };
-entity_payload entities;
-entities.pos[0] = {};
-```
-
----
-
-# Archetype based Entity Component System
-
-```c
-
-struct GameState {
-    Array_vec3s positions;
-    Array_vec3s velocities;
-    Array_vec3s rotations;
-    Array_vec3s scales;
-    Array_f32 speeds;
-    Array_u32 shapes;
-};
-
-struct StaticArchetype {
-    GameState gamestate;
-    GfxState gfxstate;
-    DebugState dbgstate;
-    EntityData entity_data;
-};
-```
-
----
-
-# Data Oriented Design
-
-Entities are just IDs, indices into arrays.
-EntityHero is just 0.
-```c
-entity_payload->dbgstate.vaos.data[EntityHero] = 
-    MeshDataArray[resource_mesh_circle].vao;
-```
-
----
 
 # Core Loop
 ```c
@@ -245,6 +194,13 @@ Here is where all the core game logic & physics gets updated.
 - update animations
 - compute physics
 - compute gpu data (model matrices/uniforms)
+
+---
+
+# Simulation Step
+The rate at which our game engine subsystems progress from frame to frame:
+1/60 = 0.0166666s = 16.666ms
+16.666 * 60 = 999.96ms
 
 ---
 
@@ -412,6 +368,59 @@ for (i32 i = 0; i < ButtonCount; ++i) {
 ![bg right fit](memhier.png)
 # The Machine:
 ## Deeper dive into the Hardware Architecture.
+
+---
+
+# DOD
+Data Oriented Design is all about (but not restricted to) data layouts and optimal memory read/writes.
+Basically SoA vs AoS: Struct of Arrays vs Array of Structs.
+```c
+// AoS
+struct entity { vec3 pos; vec3 vel; vec3 torque; vec3 color; };
+array<T> entities;
+entities[0].pos = {};
+```
+VS
+```c
+// SoA
+struct entity_payload { array<vec3> pos; array<vec3> torque; array<vec3> color; };
+entity_payload entities;
+entities.pos[0] = {};
+```
+
+---
+
+# Archetype based Entity Component System
+
+```c
+
+struct GameState {
+    Array_vec3s positions;
+    Array_vec3s velocities;
+    Array_vec3s rotations;
+    Array_vec3s scales;
+    Array_f32 speeds;
+    Array_u32 shapes;
+};
+
+struct StaticArchetype {
+    GameState gamestate;
+    GfxState gfxstate;
+    DebugState dbgstate;
+    EntityData entity_data;
+};
+```
+
+---
+
+# Data Oriented Design
+
+Entities are just IDs, indices into arrays.
+EntityHero is just 0.
+```c
+entity_payload->dbgstate.vaos.data[EntityHero] = 
+    MeshDataArray[resource_mesh_circle].vao;
+```
 
 ---
 
